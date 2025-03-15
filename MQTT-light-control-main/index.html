@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MQTT-Based Light Control</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+    <style>
+      .bulb {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        background: #e5e7eb;
+        transition: all 0.3s ease;
+        margin: 0 auto 20px;
+      }
+
+      .bulb.on {
+        background: #facc15;
+        box-shadow: 0 0 20px rgba(250, 204, 21, 0.8),
+          0 0 40px rgba(250, 204, 21, 0.6), 0 0 60px rgba(250, 204, 21, 0.4);
+      }
+    </style>
+  </head>
+  <body class="bg-white text-gray-900 min-h-screen flex items-center justify-center">
+    <div class="bg-gray-100 p-6 rounded-lg shadow-md max-w-sm w-full text-center border border-gray-300">
+      <h1 class="text-xl font-semibold text-gray-900 mb-4">MQTT-Based Light Control</h1>
+
+      <div id="bulb" class="bulb off"></div>
+      <span id="lightStatus" class="block font-semibold text-gray-700 mb-4">OFF</span>
+
+      <div class="flex justify-center space-x-4">
+        <button id="turnOnBtn" class="bg-green-500 hover:bg-green-600 text-white font-medium py-2 px-4 rounded-lg" onclick="handleTurnOn()">Turn ON</button>
+        <button id="turnOffBtn" class="bg-red-500 hover:bg-red-600 text-white font-medium py-2 px-4 rounded-lg" onclick="handleTurnOff()">Turn OFF</button>
+      </div>
+    </div>
+
+    <script>
+      const mqttConfig = {
+        host: "157.173.101.159",
+        port: 9001,
+        protocol: "ws",
+        clientId: "web_client_" + Math.random().toString(16).substr(2, 8),
+      };
+
+      const TOPIC_CONTROL = "/student_group/light_control";
+      const TOPIC_STATUS = "/student_group/light_status";
+
+      const client = mqtt.connect(mqttConfig);
+      const bulb = document.getElementById("bulb");
+      const statusIndicator = document.getElementById("statusIndicator");
+      const statusText = document.getElementById("statusText");
+
+      client.on("connect", () => {
+        console.log("Connected to MQTT broker");
+        client.subscribe(TOPIC_STATUS);
+        statusIndicator.classList.add("bg-green-500");
+        statusText.textContent = "Connected";
+      });
+
+      client.on("error", (error) => {
+        console.error("MQTT Error:", error);
+        statusIndicator.classList.add("bg-red-500");
+        statusText.textContent = "Connection Error";
+      });
+
+      client.on("message", (topic, message) => {
+        const payload = message.toString();
+        if (topic === TOPIC_STATUS) {
+          updateLightStatus(payload);
+        }
+      });
+
+      function updateLightState(isOn) {
+        if (isOn) {
+          bulb.classList.add("on");
+          updateLightStatus("ON");
+        } else {
+          bulb.classList.remove("on");
+          updateLightStatus("OFF");
+        }
+      }
+
+      function handleTurnOn() {
+        client.publish(TOPIC_CONTROL, "ON");
+        updateLightState(true);
+      }
+
+      function handleTurnOff() {
+        client.publish(TOPIC_CONTROL, "OFF");
+        updateLightState(false);
+      }
+
+      function updateLightStatus(status) {
+        document.getElementById("lightStatus").textContent = status;
+      }
+    </script>
+  </body>
+</html>
